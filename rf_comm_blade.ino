@@ -2,8 +2,8 @@
 #include <Tlc5948.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-#include "Colors.h"
-#include "animation_demos.h" // animation demos
+#include <animation_demos.h> // animation demos
+#include <tgraphics.h>
 
 #ifdef ARDUINO_TEENSY40 // Teensy 4.0
 // For anyone reading this, I found these by using the 4.0 schematic at the bottom of the
@@ -11,33 +11,28 @@
 // and cross-referencing it with https://www.pjrc.com/teensy/IMXRT1060RM_rev2.pdf
 //         SIGNAME      MANUAL PORT NAME    GPIO NAME         IRQ #
 //        --------      ----------------    ----------        -----
-//        SCLK, 13          B0_03           GPIO2_IO03          82
-//        MOSI  11          B0_02           GPIO2_IO02          82
-//        MISO  12          B0_01           GPIO2_IO01          82
-const int IRQ_PIN = 6;   // B0_10           GPIO2_IO10          82  ***
-const int CE_PIN = 8;    // B1_00           GPIO2_IO16          83
-const int CSN_PIN = 9;   // B0_11           GPIO2_IO11          82
-const int NOTEPIN1 = 3;  // EMC_05          GPIO2_IO03          82
-const int NOTEPIN2 = 4;  // EMC_06          GPIO4_IO06          86
-const int NOTEPIN3 = 5;  // EMC_08          GPIO4_IO08          86
-const int MAG_OUT = 14;  // AD_B1_02        GPIO1_IO18          81  ***
+//        SCLK, 13           B0_03           GPIO2_IO03          82
+//        MOSI  11           B0_02           GPIO2_IO02          82
+//        MISO  12           B0_01           GPIO2_IO01          82
+const int IRQ_PIN  = 6;   // B0_10           GPIO2_IO10          82  ***
+const int CE_PIN   = 8;   // B1_00           GPIO2_IO16          83
+const int CSN_PIN  = 9;   // B0_11           GPIO2_IO11          82
+const int NOTEPIN1 = 3;   // EMC_05          GPIO2_IO03          82
+const int NOTEPIN2 = 4;   // EMC_06          GPIO4_IO06          86
+const int NOTEPIN3 = 5;   // EMC_08          GPIO4_IO08          86
+const int MAG_OUT = 14;   // AD_B1_02        GPIO1_IO18          81  ***
 
-const int RADIO_SPI_SPEED = 1000000; // 1Mhz; TODO try faster clocks
+const int RADIO_SPI_SPEED = 1000000; // 1Mhz; MIGHT work with faster clocks, not really important
 
-const int MAG_IRQ =   81;
+const int MAG_IRQ   = 81;
 const int RADIO_IRQ = 82;
 
-const int MAG_PRIORITY =     127; //  //
-const int RADIO_PRIORITY =   128; //  ||-- choose these carefully! Display should be highest (lowest num)
-const int DISPLAY_PRIORITY = 126; //  //
+const int MAG_PRIORITY    =   127; //  //
+const int RADIO_PRIORITY  =   130; //  ||-- choose these carefully! Most important should be highest (lowest num)
+const int FRAME_PRIORITY  =   129; //  //
+const int COLUMN_PRIORITY =   128; //  //
 #else
 #error "Unimplemented"
-const int CE_PIN = 9;
-const int CSN_PIN = 10;
-const int NOTEPIN1 = 3;
-const int NOTEPIN2 = 5;
-const int NOTEPIN3 = 6;
-const int MAG_OUT = 3;
 #endif
 
 /*
@@ -48,26 +43,29 @@ const int MAG_OUT = 3;
      ****      **** ****   ****
      ****      **** ****   ****
      ------------------------------
- */
-float freqMultiplier = 512.0; // multiplier used to control octave and adjust for PWM count
-// in ESPWM it should be ~512, in normal PWM it should be ~65536
-float offFrequency = 8000000; // supersonic (hopefully!)
+*/
+
+// NOTE: THIS MUST BE CALLED BEFORE setupLeds()!!!!
+// The reason is these analogWriteFrequency calls are required for the TLC PWM properly
+float freqMultiplier = 256.0; // multiplier used to control octave and adjust for PWM count
+//    ^^^ in ESPWM this should be ~512, in normal PWM it should be ~65536
+float offFrequency = 9000000; // supersonic (hopefully!)
 inline void noteSetup() {
   pinMode(NOTEPIN1, OUTPUT);
   pinMode(NOTEPIN2, OUTPUT);
   pinMode(NOTEPIN3, OUTPUT);
 
-  analogWriteFrequency(3, offFrequency); // set default frequencies ( PWM_REG -> 120Hz, ES_PWM -> 15Khz)
-  analogWriteFrequency(4, offFrequency);
-  analogWriteFrequency(5, offFrequency);
+  analogWriteFrequency(NOTEPIN1, offFrequency); // set default frequencies ( PWM_REG -> 120Hz, ES_PWM -> 15Khz)
+  analogWriteFrequency(NOTEPIN2, offFrequency);
+  analogWriteFrequency(NOTEPIN3, offFrequency);
 
-  analogWrite(3, 127);
-  analogWrite(4, 127);
-  analogWrite(5, 127);
+  analogWrite(NOTEPIN1, 127);
+  analogWrite(NOTEPIN2, 127);
+  analogWrite(NOTEPIN3, 127);
 }
 
 inline void playFreq(int notePin, float noteFreq) {
-  analogWriteFrequency(notePin, noteFreq * 512);
+  analogWriteFrequency(notePin, noteFreq * freqMultiplier);
 }
 
 inline void stopFreq(int notePin) {
@@ -78,42 +76,20 @@ inline void stopFreq(int notePin) {
 /*
       \
         *****       ********     ****    /
-        *****       ********     ******** 
+        *****       ********     ********
      -- *****       *****        *********  --
-        *****       *****        ********* 
-        *********   ********     ******** 
+        *****       *****        *********
+        *********   ********     ********
      /  *********   ********     ****    \
- */
+*/
 const int NUM_TLCS = 3;
 Tlc5948 tlc;
-const uint8_t rowSize = 16;
-const uint8_t ringSize = 60; // 60; // aka columns
-// This is a big variable... check if we need this
-Pixel* displayBuffer   = (Pixel*)malloc(sizeof(Pixel)  * rowSize * ringSize);
-Pixel* displayBufferTwo = (Pixel*)malloc(sizeof(Pixel)  * rowSize * ringSize);
-Pixel* scratch = (Pixel*)malloc(sizeof(Pixel)  * rowSize * ringSize); // scratch pad for animation
-
-// Display refresh rate notes:
-// According to Quora (still need to test): house fan 1300 RPM -> 22 RPS -> ~20 FPS
-// 20 FPS means 0.05s per rotation / 60 columns -> 833us per column
-// 30 FPS -> 555us per column
-// 60 FPS -> 277us per column
-// Currently, SPI tlc5948 transfer takes 39us per column! Should work c:
-
-IntervalTimer displayTimer; // how we display at the 'right' time for each column
-volatile unsigned int displayColumn = 0;
-
-void updateDisplayIsr() {
-  tlc.writeGsBufferSPI16((uint16_t*)(displayBuffer + displayColumn), rowSize * NUM_TLCS, NUM_TLCS);
-  displayColumn = (displayColumn + 1) % ringSize;
-  asm("dsb");
-}
 
 inline void ledSetup() {
   SPI.begin();
-  tlc.begin(true);
+  tlc.begin(true, NUM_TLCS);
 
-  tlc.writeGsBufferSPI16((uint16_t*)colorPalette, 3, 3); // clear out the gs data (likely random)
+  tlc.writeGsBufferSPI16((uint16_t*)colorPalette, 3); // clear out the gs data (likely random)
   tlc.setDcData(Channels::out1, 0xff); // dot correction
   tlc.setBcData(0x7f); // global brightness
 
@@ -128,25 +104,68 @@ inline void ledSetup() {
   // long ON/OFF periods into 128 smaller segments
   // with even distribution
   tlc.setFctrlBits(fSave);
-  tlc.writeControlBufferSPI(NUM_TLCS);
+  tlc.writeControlBufferSPI();
 }
 
 inline void testFlash() {
   // check that the radio and drivers are getting along
-  tlc.writeGsBufferSPI16((uint16_t*)(colorPalette + 1), 3, NUM_TLCS);
+  tlc.writeGsBufferSPI16((uint16_t*)(colorPalette + 1), 3);
   delay(500);
-  tlc.writeGsBufferSPI16((uint16_t*)colorPalette, 3, NUM_TLCS);
+  tlc.writeGsBufferSPI16((uint16_t*)colorPalette, 3);
 }
 
-inline void displayTimerSetup() {
-  unsigned int timerDurationUs = 200000 / ringSize; // 5Hz (200ms) / 60 cols = 3333 us / col
-  //\ This will get updated by hall-effect
-  displayTimer.priority(DISPLAY_PRIORITY);
-  displayTimer.begin(updateDisplayIsr, timerDurationUs); // start timer with a guess-timate of column time
-  displayTimer.end(); // this is to stop it while debugging
+/*      TIMING STUFF
+           ~~~
+         `  ^  `
+        '   |__>'
+        '       '
+         ` ~ ~ `
+*/
+const uint16_t rowSize = 16;
+const uint16_t ringSize = 600; // 60; // aka columns
+Pixel* displayBuffer   = (Pixel*)malloc(sizeof(Pixel)  * rowSize * ringSize);
+
+// Display refresh rate notes:
+// According to Quora (still need to test): house fan 1300 RPM -> 22 RPS -> ~20 FPS
+// 20 FPS means 0.05s per rotation / 60 columns -> 833us per column
+// 30 FPS -> 555us per column
+// 60 FPS -> 277us per column
+// Currently, SPI tlc5948 transfer takes 39us per column! Should work c:
+
+IntervalTimer columnTimer; // how we display at the 'right' time for each column
+volatile unsigned int displayColumn = 0;
+
+void columnDisplayIsr() {
+  noInterrupts();
+  tlc.writeGsBufferSPI16((uint16_t*)(displayBuffer + displayColumn * rowSize ), rowSize * 3); // clear out the gs data (likely random)
+  displayColumn = (displayColumn + 1) % ringSize;
+  asm("dsb");
+  interrupts();
+}
+const unsigned int defaultFrameDurationUs = 143885; // 600000000;
+bool columnTimerRunning = false;
+inline void columnTimerSetup() {
+  unsigned int defaultColDurationUs = defaultFrameDurationUs / ringSize; // 6.95Hz (144ms) / 120 cols = 600 us / col
+  // ^^^ This will get updated by hall-effect
+  columnTimer.priority(COLUMN_PRIORITY);
+  columnTimer.begin(columnDisplayIsr, defaultColDurationUs); // start timer with a guess-timate of column time
+  columnTimerRunning = true;
 }
 
-/*   
+inline void columnTimerStop() {
+  columnTimerRunning = false;
+  noInterrupts();
+  columnTimer.end();
+  interrupts();
+}
+
+inline void columnTimerRestart() {
+  unsigned int defaultColDurationUs = defaultFrameDurationUs / ringSize; // This needs to be adjusted for hall-effect (something other than default)
+  columnTimer.begin(columnDisplayIsr, defaultColDurationUs);
+  columnTimerRunning = true;
+}
+
+/*
      ***********           ***********
      **   +   **           **   -   **
      ***********           ***********
@@ -161,41 +180,42 @@ inline void displayTimerSetup() {
 volatile uint32_t prevTimeUs = 0;
 volatile uint32_t newDurationUs = 0;
 volatile uint32_t tmpDurationUs = 0;
+// UNTESTED
 void hallIsr() {
   // Create a timer with a duration that will give 60 even segments using the time
   // Because a rotation likely won't go over 1s and micros() overflows at 1hr, we should be ok
-  tmpDurationUs = newDurationUs; 
+  tmpDurationUs = newDurationUs;
   newDurationUs = (micros() - prevTimeUs) / ringSize; // convert elapsed time to col time
   if (newDurationUs < 2 || newDurationUs > 1000) {
     newDurationUs = tmpDurationUs; // restore old value on "bad" calculations, might need a filter for this
   }
-  displayTimer.update(newDurationUs); // new displayTimer duration
+  columnTimer.update(newDurationUs); // new columnTimer duration
   displayColumn = 0; // reset to beginning of display
   prevTimeUs = micros(); // reset elapsed time
   asm("dsb"); // wait for ISR bit to be cleared before exiting
 }
 
 inline void magSetup() {
-  pinMode(MAG_OUT, INPUT_PULLDOWN);
+  pinMode(MAG_OUT, INPUT_PULLUP);
   NVIC_SET_PRIORITY(MAG_IRQ, MAG_PRIORITY);
   attachInterrupt(digitalPinToInterrupt(MAG_OUT), hallIsr, RISING); // TODO check if there's a better way to do this? VVV
-  // A couple of possible improvements: change VREF for RISING (check manual)
-  //                   switch to polling with ADC (would that really be better though?)
-  //                       \ Add Kalman filter to ADC data and trigger on threshold
 }
+// A couple of possible improvements: change VREF for RISING (check manual)
+//                                    switch to polling with ADC (would that really be better though?)
+//                                    Add Kalman filter to ADC data and trigger on threshold?
 
 /*
                  ***************************
                  *** Keyboard Processing ***
                  ***************************
- +----------------------------------------------------------------+         
- |     [q] [w] [e] [r] [t] [y] [u] [i] [o] [p] [[] []] [\]        |
- |       [a] [s] [d] [f] [g] [h] [j] [k] [l] [;] ['] [enter]      |
- | [shift] [z] [x] [c] [v] [b] [n] [m] [,] [.] [/]  [ shift]      |
- | [fn] [ctrl] [alt] [cmd] [      space     ] [cmd] [alt] [ctrl]  |
- +----------------------------------------------------------------+
+  +----------------------------------------------------------------+
+  |     [q] [w] [e] [r] [t] [y] [u] [i] [o] [p] [[] []] [\]        |
+  |       [a] [s] [d] [f] [g] [h] [j] [k] [l] [;] ['] [enter]      |
+  | [shift] [z] [x] [c] [v] [b] [n] [m] [,] [.] [/]  [ shift]      |
+  | [fn] [ctrl] [alt] [cmd] [      space     ] [cmd] [alt] [ctrl]  |
+  +----------------------------------------------------------------+
 
- */
+*/
 
 /* Keys are defined as:
        Col0    Col1
@@ -219,8 +239,8 @@ const uint8_t keysToPin[12] = {NOTEPIN1, NOTEPIN1, NOTEPIN1, NOTEPIN1,
                                NOTEPIN2, NOTEPIN2, NOTEPIN2, NOTEPIN2,
                                NOTEPIN3, NOTEPIN3, NOTEPIN3, NOTEPIN3
                               };
-const uint8_t keysToGroup[12] = {0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2};
-bool groupPlaying[3] = {false, false, false};
+const uint8_t keysToGroup[12] = {2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0};
+uint8_t groupPressed[3] = {0, 0, 0}; // counters for number of keys
 uint16_t keyData = 0x0;
 uint16_t prevKeys = 0x0; // holder for previous value of keys
 const int nKeys = 12;
@@ -228,38 +248,62 @@ const int NO_KEY_CHANGE = 0x1 << nKeys; // TODO check if nKeys > sizeof(int)*8
 
 // TODO share constants through header...
 
-inline uint16_t processKeys(uint16_t keys) { // timed at 0.24us @ 600Mhz
+inline uint16_t diffKeys(uint16_t keys) { // timed at 0.24us @ 600Mhz
   if (prevKeys == keys) {
     return NO_KEY_CHANGE; // nothing to do
   }
-  return prevKeys ^ keys;
+  uint16_t diff = prevKeys ^ keys;
+  prevKeys = keys;
+  return diff;
 }
 
 void audioUpdate(uint16_t keys, uint16_t diff) {
-  if (keys == prevKeys)
-    return NO_KEY_CHANGE;
+  if (diff == NO_KEY_CHANGE)
+    return;
   for (int i = 0; i < 12; i++) {
     if (diff & 0x1) { // if there's a difference here
       uint8_t pinNum = keysToPin[i];
+      uint8_t group = keysToGroup[i];
 
       // if a key is on and no other note in group playing
-      if ((keys & 0x1) && !groupPlaying[keysToGroup[i]]) {
-        playFreq(pinNum, keysToFreq[i]); //note on
+      if (keys & 0x1) {
+        if (groupPressed[group] == 0) {
+          Serial.print("Note on: ");
+          Serial.println(keysToFreq[i]);
+          playFreq(pinNum, keysToFreq[i]); //note o
+        }
+        groupPressed[group] += 1;
       } else if (!(keys & 0x1)) {
-        stopFreq(pinNum); // note off
+        if (groupPressed[group] == 1) { // only turn off if a single note is playing
+          Serial.println("Note off");
+          stopFreq(pinNum);
+        }
+        groupPressed[group] -= 1;
       }
-      diff >>= 1;
-      keys >>= 1;
     }
+    diff >>= 1;
+    keys >>= 1;
+  }
+
+  // Figure out if we need to stop animation (ie a note is playing)
+  int notesPlaying = 0;
+  for (int i = 0; i < 3; i++) {
+    notesPlaying += groupPressed[i];
+  }
+  if (notesPlaying != 0 && columnTimerRunning) {
+    columnTimerStop();
+  } else if (notesPlaying == 0 && !columnTimerRunning) {
+    columnTimerRestart();
   }
 }
+
 
 // Ring-Buffer and functions for storing keypresses
 // Note: This really should use atomic operations... however the time it takes a person
 // to make a keypress and send it is *significantly* slower than the time it is to add/push a key
 // so I'm leaving it out for now...
 // This might create issues with rapid consecutive keypresses or keys pushed "at the same time"
-// and if so then atomic ops would be the way to fix that
+// and if so then atomic ops would probably be the way to fix that
 // [keypress1] [keypress2] [keypress3] [keypress4]
 const int keyBufferSize = 16; // Actual buffer size
 volatile int insertIndex = 0;
@@ -304,6 +348,7 @@ RF24 radio(CE_PIN, CSN_PIN, RADIO_SPI_SPEED);
 const uint64_t pipe = 0xB0B15ADEADBEEFAA;
 
 void radioIsr() {
+  noInterrupts();
   bool tx_ok, tx_fail, rx_ready;
   uint16_t keyVal = 0x0;
   radio.whatHappened(tx_ok, tx_fail, rx_ready); // figure out why we're getting a call
@@ -319,6 +364,7 @@ void radioIsr() {
     radio.writeAckPayload(1, &newDurationUs, sizeof(newDurationUs));
   }
   asm("dsb"); // wait for the ISR bit to be cleared in case this is too short of an ISR (necessary?)
+  interrupts();
 }
 
 inline void radioSetup() {
@@ -357,18 +403,23 @@ inline void radioSetup() {
 // Fireworks
 // Oscillating rings
 
-RainbowWheel myFlash;
-
-Demo* anim = &myFlash; // Set this to the desired animation object
+//SimpleFlash myAnim (Colors::RoyalPurple,1000000,10.0);
+RainbowWheel myAnim(5.0);
+Demo* anim = &myAnim; // Set this to the d-esired animation object
 
 inline void animationSetup() {
+  for (uint32_t i = 0; i < ringSize; i++) {
+    for (uint32_t j = 0; j < rowSize; j++) {
+      displayBuffer[indexAt(rowSize, i, j)] = Colors::Black;
+    }
+  }
   anim->setup(displayBuffer, rowSize, ringSize);
 }
 
 inline void animationUpdate(uint16_t keys, uint16_t diff) {
   if (diff != NO_KEY_CHANGE)
-    anim->processKeypress(keys,diff);
-  anim->nextFrame(displayBuffer, rowSize, ringSize);
+    anim->processKeypress(keys, diff);
+  anim->tick();
 }
 
 void setup() {
@@ -376,18 +427,32 @@ void setup() {
 
   noteSetup();
   Serial.println("Setup note pins");
+
   ledSetup();
   Serial.println("Setup LED drivers");
+
   testFlash();
   Serial.println("Tested LED drivers");
+
   radioSetup();
   Serial.println("Setup radio");
 
-  magSetup();
-  Serial.println("Setup magnet sensor");
+  // magSetup(); /* DISABLED FOR NOW */
+  // Serial.println("Setup magnet sensor");
   animationSetup();
   Serial.println("Setup display buffer");
-  Serial.println("finished setup");
+
+  columnTimerSetup();
+  Serial.println("Setup display timer");
+
+  Serial.println("Finished setup");
+
+  delay(5000);
+  /*  Pixel* myArr = (Pixel*)malloc(sizeof(Pixel) * rowSize);
+    Pixel col = Colors::Red;
+    vecFill(col * 10.0, myArr, rowSize);
+    tlc.writeGsBufferSPI16((uint16_t*)(myArr), rowSize * 3);*/
+
 }
 
 
@@ -397,15 +462,13 @@ void setup() {
 // in this loop
 
 void loop() {
+
   uint16_t keys = NO_KEY_CHANGE, diff = NO_KEY_CHANGE;
   // Get input
   if (keyBufferNotEmpty()) {
-    keys = popKey();
-    diff = processKeys(keys);
-    audioUpdate(keys,diff); // update frequencies of PWM
-// Testing keypresses + LEDs
-//    uint16_t index = (uint16_t)log(diff)/log(2); 
-//    tlc.writeGsBufferSPI16((uint16_t*)(colorPalette + index), 3, NUM_TLCS);
+    keys = popKey(); // get the new keys
+    diff = diffKeys(keys); // figure out keys pressed/unpressed
+    audioUpdate(keys, diff); // figure out notes to play
   }
-  animationUpdate(keys,diff);
+  animationUpdate(keys, diff);
 }
