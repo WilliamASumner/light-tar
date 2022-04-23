@@ -27,7 +27,11 @@ This project was not designed from the ground up to be easily replicatable. If I
 TeensyDuino 1.54+ is required to use this with the hardware I've originally used (the Teensy 4.0). You also need my [TLC5948 library](https://github.com/WilliamASumner/Tlc5948) and my [teensy graphics library](https://github.com/WilliamASumner/teensy-graphics). There are probably good chips out there that have nice libraries already, but I thought it would be fun to work from the ground up. Sorry that it had to be this way. Each of those should be a simple `git clone` into your `$ARDUINO/libraries` folder. You also need the RF24 and nRF24L01 libraries and may need to make a small modification to get the SPI to work with the TLC5948's.
 
 # Setup
-It should be enough to just `git clone` this repo, open the `rf_comm_blade.ino` file and upload it with the Teensyduino App. This component currently only supports a Teensy 4.0, I haven't tested it on anything else. It might work on a Teensy 4.1 provided the pins are wired correctly, but I'm fairly certain it won't work on something like an Arduino Nano, but that shouldn't discourage you from trying! I'm open to pull requests : )
+1) `git clone` this repo
+2) Upload the `rf_comm_keyboard.ino` to the Arduino Nano/Board that is the keyboard
+3) Upload the `rf_comm_blade.ino` to the Teensy board/LED board
+
+It should be enough to just `git clone` this repo and upload the ino files. This component currently only supports a Teensy 4.0, I haven't tested it on anything else. It might work on a Teensy 4.1 provided the pins are wired correctly, but I'm fairly certain it won't work on something like an Arduino Nano, but that shouldn't discourage you from trying! I'm open to pull requests : )
 
 # More Info for Nerds
 ## Why
