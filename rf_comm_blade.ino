@@ -230,14 +230,132 @@ inline void magSetup() {
 
 */
 
+// Note list 
+
+const float c0 = 16.35;
+const float c_sharp_0_d_flat_0 = 17.32;
+const float d0 = 18.35;
+const float d_sharp_0_e_flat_0 = 19.45;
+const float e0 = 20.60;
+const float f0 = 21.83;
+const float f_sharp_0_g_flat_0 = 23.12;
+const float g0 = 24.50;
+const float g_sharp_0_a_flat_0 = 25.96;
+const float a0 = 27.50;
+const float a_sharp_0_b_flat_0 = 29.14;
+const float b0 = 30.87;
+const float c1 = 32.70;
+const float c_sharp_1_d_flat_1 = 34.65;
+const float d1 = 36.71;
+const float d_sharp_1_e_flat_1 = 38.89;
+const float e1 = 41.20;
+const float f1 = 43.65;
+const float f_sharp_1_g_flat_1 = 46.25;
+const float g1 = 49.00;
+const float g_sharp_1_a_flat_1 = 51.91;
+const float a1 = 55.00;
+const float a_sharp_1_b_flat_1 = 58.27;
+const float b1 = 61.74;
+const float c2 = 65.41;
+const float c_sharp_2_d_flat_2 = 69.30;
+const float d2 = 73.42;
+const float d_sharp_2_e_flat_2 = 77.78;
+const float e2 = 82.41;
+const float f2 = 87.31;
+const float f_sharp_2_g_flat_2 = 92.50;
+const float g2 = 98.00;
+const float g_sharp_2_a_flat_2 = 103.83;
+const float a2 = 110.00;
+const float a_sharp_2_b_flat_2 = 116.54;
+const float b2 = 123.47;
+const float c3 = 130.81;
+const float c_sharp_3_d_flat_3 = 138.59;
+const float d3 = 146.83;
+const float d_sharp_3_e_flat_3 = 155.56;
+const float e3 = 164.81;
+const float f3 = 174.61;
+const float f_sharp_3_g_flat_3 = 185.00;
+const float g3 = 196.00;
+const float g_sharp_3_a_flat_3 = 207.65;
+const float a3 = 220.00;
+const float a_sharp_3_b_flat_3 = 233.08;
+const float b3 = 246.94;
+const float c4 = 261.63;
+const float c_sharp_4_d_flat_4 = 277.18;
+const float d4 = 293.66;
+const float d_sharp_4_e_flat_4 = 311.13;
+const float e4 = 329.63;
+const float f4 = 349.23;
+const float f_sharp_4_g_flat_4 = 369.99;
+const float g4 = 392.00;
+const float g_sharp_4_a_flat_4 = 415.30;
+const float a4 = 440.00;
+const float a_sharp_4_b_flat_4 = 466.16;
+const float b4 = 493.88;
+const float c5 = 523.25;
+const float c_sharp_5_d_flat_5 = 554.37;
+const float d5 = 587.33;
+const float d_sharp_5_e_flat_5 = 622.25;
+const float e5 = 659.25;
+const float f5 = 698.46;
+const float f_sharp_5_g_flat_5 = 739.99;
+const float g5 = 783.99;
+const float g_sharp_5_a_flat_5 = 830.61;
+const float a5 = 880.00;
+const float a_sharp_5_b_flat_5 = 932.33;
+const float b5 = 987.77;
+const float c6 = 1046.50;
+const float c_sharp_6_d_flat_6 = 1108.73;
+const float d6 = 1174.66;
+const float d_sharp_6_e_flat_6 = 1244.51;
+const float e6 = 1318.51;
+const float f6 = 1396.91;
+const float f_sharp_6_g_flat_6 = 1479.98;
+const float g6 = 1567.98;
+const float g_sharp_6_a_flat_6 = 1661.22;
+const float a6 = 1760.00;
+const float a_sharp_6_b_flat_6 = 1864.66;
+const float b6 = 1975.53;
+const float c7 = 2093.00;
+const float c_sharp_7_d_flat_7 = 2217.46;
+const float d7 = 2349.32;
+const float d_sharp_7_e_flat_7 = 2489.02;
+const float e7 = 2637.02;
+const float f7 = 2793.83;
+const float f_sharp_7_g_flat_7 = 2959.96;
+const float g7 = 3135.96;
+const float g_sharp_7_a_flat_7 = 3322.44;
+const float a7 = 3520.00;
+const float a_sharp_7_b_flat_7 = 3729.31;
+const float b7 = 3951.07;
+const float c8 = 4186.01;
+const float c_sharp_8_d_flat_8 = 4434.92;
+const float d8 = 4698.63;
+const float d_sharp_8_e_flat_8 = 4978.03;
+const float e8 = 5274.04;
+const float f8 = 5587.65;
+const float f_sharp_8_g_flat_8 = 5919.91;
+const float g8 = 6271.93;
+const float g_sharp_8_a_flat_8 = 6644.88;
+const float a8 = 7040.00;
+const float a_sharp_8_b_flat_8 = 7458.62;
+const float b8 = 7902.13;
+
 // Current frequencies are just two strings an octave apart
-const float keysToFreq[12] = {164.81, 329.63, 174.61, 349.23,
-                              185.00, 369.99, 196.00, 392.00,
-                              207.65, 415.30, 220.00, 440.00
+const float keysToFreq[12] = {e3, e4,
+                              f3, f4,
+                              f_sharp_3_g_flat_3, f_sharp_4_g_flat_4,
+                              g3, g4,
+                              g_sharp_3_a_flat_3, g_sharp_4_a_flat_4,
+                              a3, a4
                              };
-const uint8_t keysToPin[12] = {NOTEPIN1, NOTEPIN1, NOTEPIN1, NOTEPIN1,
-                               NOTEPIN2, NOTEPIN2, NOTEPIN2, NOTEPIN2,
-                               NOTEPIN3, NOTEPIN3, NOTEPIN3, NOTEPIN3
+         
+const uint8_t keysToPin[12] = {NOTEPIN1, NOTEPIN1,
+                               NOTEPIN1, NOTEPIN1,
+                               NOTEPIN2, NOTEPIN2,
+                               NOTEPIN2, NOTEPIN2,
+                               NOTEPIN3, NOTEPIN3,
+                               NOTEPIN3, NOTEPIN3
                               };
 const uint8_t keysToGroup[12] = {2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0};
 uint8_t groupPressed[3] = {0, 0, 0}; // counters for number of keys
