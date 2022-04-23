@@ -31,15 +31,12 @@ It should be enough to just `git clone` this repo, open the `rf_comm_blade.ino` 
 
 # More Info for Nerds
 ## Why
-So why? Why make this overly complicated thing when guitars are already a thing? Why not just put some LEDs on a stringed guitar?? Well, I did this for my brother. He's into making music and I wanted to make him something, so I came up with this. I have to give credit to [Electronicos Fantasticos](https://www.youtube.com/watch?v=omgbhGirTtY). I thought the idea of using light to make sound was really cool, and I thought a POV display was very similar and could do the same job whilst also potentially providing additional LED coolness B) So, with the idea for this custom instrument in mind, I set out.
-
-## What (TF)??
-The first problem with a system like this may or may not be immediately apparent: How the heck do the LED's make sound?! Well to answer that we need to first explain what I mean by make sound. The way the sound signal gets to your ears is, thanks to Einstein and probably some other scientists who drew the history short stick. Einstein (and his assumed lackeys) were smart enough to figure out how to turn light energy into electrical energy. Lucky for us, solar panels today are readily available and do a pretty good job of preserving the signal they get from lights. There's an _awesome_ [video](https://www.youtube.com/watch?v=G9DDOq7MtLk) showing how you can do this with an LED, a simple radio and a solar cell. 
-
+So why? Idk.
 
 # Ideas for Next Time
 * Mounting holes on the PCB
 * Integrated charging coil + receiver circuit + power circuit on PCB
-* Independent LAT lines to each TLC5948 (allows for independent flashing of LEDs)
+* Independent LAT lines to each TLC5948 (allows for independent animatiion of TLC5948's)
 * Integrated mounting on a motor shaft
 * Larger keyboard (fretboard) (like a real guitar!)
+* RF24-based programming of Teensy for ease of use
