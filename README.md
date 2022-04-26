@@ -24,7 +24,7 @@ This project was not designed from the ground up to be easily replicatable. If I
 * (Optional) You may want some sort of high pass RC filter. I don't design audio equipment so I would suggest researching best practices, but a simple resistor and cap worked for me.
 
 ## Software Requirements
-TeensyDuino 1.54+ is required to use this with the hardware I've originally used (the Teensy 4.0). You also need my [TLC5948 library](https://github.com/WilliamASumner/Tlc5948) and my [teensy graphics library](https://github.com/WilliamASumner/teensy-graphics). There are probably good chips out there that have nice libraries already, but I thought it would be fun to work from the ground up. Sorry that it had to be this way. Each of those should be a simple `git clone` into your `$ARDUINO/libraries` folder. You also need the RF24 and nRF24L01 libraries and may need to make a small modification to get the SPI to work with the TLC5948's.
+TeensyDuino 1.54+ is required to use this with the hardware I've originally used (the Teensy 4.0). You also need my [TLC5948 library](https://github.com/WilliamASumner/Tlc5948) and my [teensy graphics library](https://github.com/WilliamASumner/teensy-graphics). There are probably good chips out there that have nice libraries already, but I thought it would be fun to work from the ground up. Sorry that it had to be this way. Each of those should be a simple `git clone` into your `$ARDUINO/libraries` folder. You also need the RF24 and nRF24L01 libraries and may need to make a small modification to get the SPI to work with the TLC5948's. These libraries should be available through the Arduino/Teensyduino IDE's [library manager](https://www.arduino.cc/en/Guide/Libraries?setlang=en).
 
 ## Setup
 1) `git clone` this repo
