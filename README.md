@@ -1,5 +1,5 @@
-# Wallytron
-This repo is for the Wallytron project, a guitar that makes sound using light! It's kind of a weird instrument but it looks cool and is fun to use.
+# wallytron
+This repo is for the wallytron project, a guitar that makes sound using light! It's kind of a weird instrument but it looks cool and is fun to use.
 
 ## Hardware Requirements
 This project was not designed from the ground up to be easily replicatable. If I do a second version I might pay more attention to that. If you still decide you want to try this, here's a list of parts:
