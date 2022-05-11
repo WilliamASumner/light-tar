@@ -357,7 +357,13 @@ const uint8_t keysToPin[12] = {NOTEPIN1, NOTEPIN1,
                                NOTEPIN3, NOTEPIN3,
                                NOTEPIN3, NOTEPIN3
                               };
-const uint8_t keysToGroup[12] = {2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0};
+const uint8_t keysToGroup[12] = {2, 2, 
+                                 2, 2, 
+                                 1, 1, 
+                                 1, 1, 
+                                 0, 0, 
+                                 0, 0
+                                };
 uint8_t groupPressed[3] = {0, 0, 0}; // counters for number of keys
 uint16_t keyData = 0x0;
 uint16_t prevKeys = 0x0; // holder for previous value of keys
